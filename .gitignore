@@ -1,0 +1,16 @@
+# fișiere generate automat la compilare
+**/target/
+
+# setările personale ale IntelliJ
+**/.idea/
+*.iml
+
+# parole și date personale
+**/secrets.properties
+
+# pentru frontend-ul de mai târziu
+**/node_modules/
+
+# altele
+server.zip
+.postman/
