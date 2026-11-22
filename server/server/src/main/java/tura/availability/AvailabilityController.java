@@ -3,6 +3,7 @@ package tura.availability;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -22,9 +23,12 @@ public class AvailabilityController {
         return availabilityService.findById(id);
     }
 
+    /** ex: /availability/employee/3?from=2026-12-01&to=2026-12-31 */
     @GetMapping("/employee/{employeeId}")
-    public List<Availability> getByEmployee(@PathVariable Integer employeeId) {
-        return availabilityService.findByEmployee(employeeId);
+    public List<Availability> getByEmployee(@PathVariable Integer employeeId,
+                                            @RequestParam(required = false) LocalDate from,
+                                            @RequestParam(required = false) LocalDate to) {
+        return availabilityService.findByEmployee(employeeId, from, to);
     }
 
     @PostMapping

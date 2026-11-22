@@ -34,17 +34,18 @@ public class ChatContextBuilder {
         LocalDate sunday = monday.plusDays(6);
         StringBuilder sb = new StringBuilder();
 
-        // 1. angajații, orele și preferințele lor
-        sb.append("ANGAJAȚI ȘI PREFERINȚELE LOR DE PROGRAM:\n");
+        // 1. angajații, orele și preferințele lor din săptămâna asta
+        sb.append("ANGAJAȚI ȘI PREFERINȚELE LOR ÎN SĂPTĂMÂNA ").append(monday).append(" – ").append(sunday).append(":\n");
         for (Employee e : employeeRepository.findByRole(Role.STAFF)) {
             ShiftAssignmentService.WeekSummary week = assignmentService.weekSummary(e.getId(), monday);
             sb.append("- ").append(e.getName())
                     .append(" (").append(e.getPosition())
                     .append(", programat ").append(week.hours()).append("h din maxim ").append(week.maxHours()).append("h)")
                     .append(". Preferințe: ");
-            List<Availability> prefs = availabilityRepository.findByEmployeeId(e.getId());
+            List<Availability> prefs =
+                    availabilityRepository.findByEmployeeIdAndDateBetweenOrderByDate(e.getId(), monday, sunday);
             if (prefs.isEmpty()) {
-                sb.append("nu și-a completat preferințele");
+                sb.append("poate lucra oricând");
             }
             for (Availability a : prefs) {
                 sb.append(describe(a)).append("; ");
@@ -99,14 +100,11 @@ public class ChatContextBuilder {
     }
 
     private String describe(Availability a) {
-        String day = dayRo(a.getDayOfWeek());
+        String day = dayRo(a.getDate().getDayOfWeek()) + " " + a.getDate();
         if (!a.isAvailable()) {
-            return day + " indisponibil";
+            return day + ": zi liberă";
         }
-        if (a.getFromTime() == null && a.getToTime() == null) {
-            return day + " oricând";
-        }
-        String text = day;
+        String text = day + ": doar";
         if (a.getFromTime() != null) text += " de la " + a.getFromTime();
         if (a.getToTime() != null) text += " până la " + a.getToTime();
         return text;

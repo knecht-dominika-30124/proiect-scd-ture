@@ -8,6 +8,7 @@ import tura.availability.Availability;
 import tura.availability.AvailabilityRepository;
 import tura.employee.Employee;
 import tura.employee.EmployeeService;
+import tura.employee.Role;
 import tura.timeoff.TimeOffRepository;
 import tura.timeoff.TimeOffStatus;
 
@@ -42,17 +43,16 @@ public class ShiftAssignmentService {
         return assignmentRepository.findByShiftId(shiftId);
     }
 
-    /** Angajații care pot lucra în tură conform preferințelor și nu sunt deja în ea. */
+    /** Angajații care pot lucra în tură (preferințe + concedii) și nu sunt deja în ea. */
     public List<Employee> findAvailableForShift(Integer shiftId) {
         Shift shift = shiftService.findById(shiftId);
 
         List<Employee> available = availabilityRepository.findAvailableFor(
-                shift.getDate().getDayOfWeek(),
-                shift.getStartTime(),
-                shift.getEndTime());
+                shift.getDate(), shift.getStartTime(), shift.getEndTime(), Role.STAFF);
 
         return available.stream()
                 .filter(e -> !assignmentRepository.existsByShiftIdAndEmployeeId(shiftId, e.getId()))
+                .filter(e -> !timeOffRepository.hasTimeOffOn(e.getId(), shift.getDate(), TimeOffStatus.APPROVED))
                 .toList();
     }
 
@@ -79,28 +79,24 @@ public class ShiftAssignmentService {
 
         // 1. nu de două ori în aceeași tură
         if (assignmentRepository.existsByShiftIdAndEmployeeId(shiftId, employeeId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    employee.getName() + " este deja în această tură");
+            throw badRequest(employee.getName() + " este deja în această tură");
         }
 
         // 2. tura nu trebuie să fie deja completă
         long alreadyAssigned = assignmentRepository.countByShiftId(shiftId);
         if (alreadyAssigned >= shift.getRequiredStaff()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Tura este deja completă (" + alreadyAssigned + "/" + shift.getRequiredStaff() + ")");
+            throw badRequest("Tura este deja completă (" + alreadyAssigned + "/" + shift.getRequiredStaff() + ")");
         }
 
-        // 3. tura trebuie să se potrivească cu preferința angajatului
+        // 3. tura trebuie să se potrivească cu preferința angajatului din acea zi
         String problem = checkPreference(employee, shift);
         if (problem != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    employee.getName() + " nu poate lucra în această tură: " + problem);
+            throw badRequest(employee.getName() + " nu poate lucra în această tură: " + problem);
         }
 
         // 6. nu poate lucra dacă are concediu aprobat în ziua aceea
         if (timeOffRepository.hasTimeOffOn(employeeId, shift.getDate(), TimeOffStatus.APPROVED)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    employee.getName() + " are concediu aprobat pe " + shift.getDate());
+            throw badRequest(employee.getName() + " are concediu aprobat pe " + shift.getDate());
         }
 
         // ce ture are deja angajatul în săptămâna asta
@@ -112,18 +108,16 @@ public class ShiftAssignmentService {
             boolean overlaps = other.getStartTime().isBefore(shift.getEndTime())
                     && shift.getStartTime().isBefore(other.getEndTime());
             if (sameDay && overlaps) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        employee.getName() + " lucrează deja " + other.getStartTime() + "–" + other.getEndTime()
-                                + " în aceeași zi");
+                throw badRequest(employee.getName() + " lucrează deja " + other.getStartTime() + "–"
+                        + other.getEndTime() + " în aceeași zi");
             }
         }
 
         // 5. nu poate depăși limita de ore pe săptămână
         double totalHours = week.hours() + shift.getHours();
         if (totalHours > week.maxHours()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    employee.getName() + " ar ajunge la " + totalHours + "h, peste limita de "
-                            + week.maxHours() + "h pe săptămână");
+            throw badRequest(employee.getName() + " ar ajunge la " + totalHours + "h, peste limita de "
+                    + week.maxHours() + "h pe săptămână");
         }
 
         ShiftAssignment assignment = new ShiftAssignment();
@@ -140,28 +134,31 @@ public class ShiftAssignmentService {
     }
 
     /**
-     * Verifică dacă tura se potrivește cu preferința angajatului din ziua respectivă.
-     * Întoarce null dacă e totul în regulă, altfel motivul pentru care nu se potrivește.
+     * Verifică preferința angajatului pentru data turei.
+     * Întoarce null dacă poate lucra, altfel motivul pentru care nu poate.
      */
     private String checkPreference(Employee employee, Shift shift) {
-        DayOfWeek day = shift.getDate().getDayOfWeek();
         Optional<Availability> preference =
-                availabilityRepository.findByEmployeeIdAndDayOfWeek(employee.getId(), day);
+                availabilityRepository.findByEmployeeIdAndDate(employee.getId(), shift.getDate());
 
         if (preference.isEmpty()) {
-            return "nu și-a completat preferința pentru " + day;
+            return null; // nicio preferință în ziua asta = poate lucra oricând
         }
 
         Availability p = preference.get();
         if (!p.isAvailable()) {
-            return "a marcat " + day + " ca zi în care nu poate lucra";
+            return "și-a cerut zi liberă pe " + shift.getDate();
         }
         if (p.getFromTime() != null && p.getFromTime().isAfter(shift.getStartTime())) {
-            return day + " poate lucra doar de la " + p.getFromTime();
+            return "pe " + shift.getDate() + " poate lucra doar de la " + p.getFromTime();
         }
         if (p.getToTime() != null && p.getToTime().isBefore(shift.getEndTime())) {
-            return day + " poate lucra doar până la " + p.getToTime();
+            return "pe " + shift.getDate() + " poate lucra doar până la " + p.getToTime();
         }
         return null;
+    }
+
+    private ResponseStatusException badRequest(String message) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
     }
 }
