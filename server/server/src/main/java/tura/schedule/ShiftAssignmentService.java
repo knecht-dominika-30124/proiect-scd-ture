@@ -143,6 +143,10 @@ public class ShiftAssignmentService {
         assignmentRepository.deleteById(assignmentId);
     }
 
+    public List<ShiftAssignment> findBySchedule(Integer scheduleId) {
+        return assignmentRepository.findByShiftScheduleId(scheduleId);
+    }
+
     /**
      * Verifică preferința angajatului pentru data turei.
      * Întoarce null dacă poate lucra, altfel motivul pentru care nu poate.

@@ -42,6 +42,11 @@ public class ShiftAssignmentController {
         return assignmentService.weekSummary(employeeId, date);
     }
 
+    @GetMapping("/schedule/{scheduleId}")
+    public List<ShiftAssignment> getBySchedule(@PathVariable Integer scheduleId) {
+        return assignmentService.findBySchedule(scheduleId);
+    }
+
     /** ex: /assignment/employee/7/shifts?from=2026-12-01&to=2026-12-31 */
     @GetMapping("/employee/{employeeId}/shifts")
     public List<Shift> getPublishedShifts(@PathVariable Integer employeeId,
