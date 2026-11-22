@@ -1,10 +1,10 @@
 <template>
   <h1 class="text-h4 mb-4">Bună, {{ currentUser.name }}! 👋</h1>
 
-  <PreferencesForm />
+  <PreferencesCalendar />
 </template>
 
 <script setup>
 import { currentUser } from '@/session'
-import PreferencesForm from '@/components/PreferencesForm.vue'
+import PreferencesCalendar from '@/components/PreferencesCalendar.vue'
 </script>
