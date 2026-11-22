@@ -27,4 +27,17 @@ public interface ShiftAssignmentRepository extends JpaRepository<ShiftAssignment
     List<ShiftAssignment> findForEmployeeBetween(@Param("employeeId") Integer employeeId,
                                                  @Param("from") LocalDate from,
                                                  @Param("to") LocalDate to);
+
+    /** CUSTOM QUERY: turele unui angajat între două date, doar din programele cu statusul dat. */
+    @Query("""
+            SELECT sa FROM ShiftAssignment sa
+            WHERE sa.employee.id = :employeeId
+              AND sa.shift.date BETWEEN :from AND :to
+              AND sa.shift.schedule.status = :status
+            ORDER BY sa.shift.date, sa.shift.startTime
+            """)
+    List<ShiftAssignment> findForEmployeeBetweenWithStatus(@Param("employeeId") Integer employeeId,
+                                                           @Param("from") LocalDate from,
+                                                           @Param("to") LocalDate to,
+                                                           @Param("status") ScheduleStatus status);
 }

@@ -73,6 +73,16 @@ public class ShiftAssignmentService {
         return new WeekSummary(employee.getName(), monday, hours, maxHours, shifts);
     }
 
+    /** Turele publicate ale unui angajat într-o perioadă (pentru calendarul angajatului). */
+    public List<Shift> publishedShiftsForEmployee(Integer employeeId, LocalDate from, LocalDate to) {
+        employeeService.findById(employeeId);
+        return assignmentRepository
+                .findForEmployeeBetweenWithStatus(employeeId, from, to, ScheduleStatus.PUBLISHED)
+                .stream()
+                .map(ShiftAssignment::getShift)
+                .toList();
+    }
+
     public ShiftAssignment assign(Integer shiftId, Integer employeeId) {
         Shift shift = shiftService.findById(shiftId);
         Employee employee = employeeService.findById(employeeId);

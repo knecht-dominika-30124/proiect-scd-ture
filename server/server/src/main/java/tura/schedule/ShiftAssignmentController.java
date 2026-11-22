@@ -41,4 +41,12 @@ public class ShiftAssignmentController {
                                                       @RequestParam LocalDate date) {
         return assignmentService.weekSummary(employeeId, date);
     }
+
+    /** ex: /assignment/employee/7/shifts?from=2026-12-01&to=2026-12-31 */
+    @GetMapping("/employee/{employeeId}/shifts")
+    public List<Shift> getPublishedShifts(@PathVariable Integer employeeId,
+                                          @RequestParam LocalDate from,
+                                          @RequestParam LocalDate to) {
+        return assignmentService.publishedShiftsForEmployee(employeeId, from, to);
+    }
 }
