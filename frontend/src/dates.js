@@ -48,4 +48,16 @@ export function formatLong(date) {
 // "12:00:00" → "12:00"
 export function shortTime(time) {
     return time ? time.slice(0, 5) : ''
+
+}
+
+// "2026-12-01" → "1 dec. 2026"
+export function formatDate(iso) {
+    return fromIso(iso).toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// câte zile are intervalul, inclusiv capetele: 15–17 decembrie = 3 zile
+export function daysBetween(fromIsoDate, toIsoDate) {
+    const ms = fromIso(toIsoDate) - fromIso(fromIsoDate)
+    return Math.round(ms / (24 * 60 * 60 * 1000)) + 1
 }
